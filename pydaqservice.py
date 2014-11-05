@@ -31,6 +31,11 @@ rpc_server = RPCServer(
     dispatcher
 )
 
+@dispatcher.public
+def writeDigitalOutput(channel,value):
+    digital_output = daq.Task()    
+    digital_output.CreateDOChan(channel,"",daq.DAQmx_Val_ChanPerLine)
+    digital_output.WriteDigitalScalarU32(True,0,value,None)
 
 
 @dispatcher.public
