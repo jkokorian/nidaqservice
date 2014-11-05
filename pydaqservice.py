@@ -60,4 +60,13 @@ def readAnalogInput(channel):
     analog_input.ReadAnalogScalarF64(10,daq.byref(value),None)
     return value.value
 
+@dispatcher.public
+def readDigitalInput(channel):
+    digital_input = daq.Task()
+    digital_input.CreateDIChan(channel,"",daq.DAQmx_Val_ChanPerLine)
+    
+    value = daq.c_uint32
+    digital_input.ReadDigitalScalarU32(0,daq.byref(value),None)
+    return value.value
+
 rpc_server.serve_forever()
