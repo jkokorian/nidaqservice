@@ -45,4 +45,14 @@ def writeAnalogOutput(channel,value,min_value=0.0,max_value=5.0):
     print "%s, %0.3f V" % (channel,value)
     return value
 
+@dispatcher.public
+def readAnalogInput(channel):
+    analog_input = daq.Task()
+    
+    analog_input.CreateAIVoltageChan(channel,"",daq.DAQmx_Val_RSE,-10.0,10.0,daq.DAQmx_Val_Volts,None)
+    
+    value = daq.float64()
+    analog_input.ReadAnalogScalarF64(10,daq.byref(value),None)
+    return value.value
+
 rpc_server.serve_forever()
