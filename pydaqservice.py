@@ -38,9 +38,9 @@ def writeAnalogOutput(channel,value,min_value=0.0,max_value=5.0):
     analog_output = daq.Task()
     
     # DAQmx Configure Code
-    analog_output.CreateAOVoltageChan(channel,"", min_value,max_value,daq.DAQmx_Val_Volts,None)
+    analog_output.CreateAOVoltageChan(channel,"", min_value,max_value,daq.DAQmx_Val_Volts,None)    
     
-    analog_output.WriteAnalogScalarF64(True,0,3.2,None)
+    analog_output.WriteAnalogScalarF64(True,0,value,None)
     
     print "%s, %0.3f V" % (channel,value)
     return value
