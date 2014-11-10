@@ -13,6 +13,9 @@ parser = argparse.ArgumentParser(prog="pydaqservice",
 #parser.add_argument('channel', type=str, help='The physical output channel to write to')
 parser.add_argument('--port', dest='port', type=int, default=5002,
                    help='The port on which to bind to service.')
+parser.add_argument('--persist', dest='persist', type=bool, default=False,
+                    help='set whether or not to persist the connection to the daq after a call')
+
                    
 args = parser.parse_args()
 
@@ -32,42 +35,89 @@ rpc_server = RPCServer(
     dispatcher
 )
 
-@dispatcher.public
-def writeDigitalOutput(channel,value):
+
+channelTasks = dict()
+
+def initializeDigitalOutput(channel):
     digital_output = daq.Task()
     digital_output.CreateDOChan(channel,"",daq.DAQmx_Val_ChanPerLine)
-    digital_output.WriteDigitalScalarU32(True,0,value,None)
+    return digital_output
+
+def initializeDigitalInput(channel):
+    digital_input = daq.Task()
+    digital_input.CreateDIChan(channel,"",daq.DAQmx_Val_ChanPerLine)
+    return digital_input
+
+def initializeAnalogOutput(channel,value,min_value=0.0,max_value=5.0):
+    analog_output = daq.Task()
+    analog_output.CreateAOVoltageChan(channel,"", min_value,max_value,daq.DAQmx_Val_Volts,None)
+    return analog_output
+
+def initializeAnalogInput(channel):
+    analog_input = daq.Task()
+    analog_input.CreateAIVoltageChan(channel,"",daq.DAQmx_Val_RSE,-10.0,10.0,daq.DAQmx_Val_Volts,None)
+    return analog_input
+
+
+@dispatcher.public
+def writeDigitalOutput(channel,value):
+    if not channelTasks.has_key(channel):
+        channelTasks[channel] = initializeDigitalOutput(channel)
+    
+    digital_output = channelTasks[channel]
+
+    try:    
+        digital_output.WriteDigitalScalarU32(True,0,value,None)
+    except Exception as ex:
+        del channelTasks[channel]
+        raise ex
 
 
 @dispatcher.public
 def writeAnalogOutput(channel,value,min_value=0.0,max_value=5.0):
-    analog_output = daq.Task()
+    if not channelTasks.has_key(channel):
+        channelTasks[channel] = initializeAnalogOutput(channel,min_value,max_value)
     
-    # DAQmx Configure Code
-    analog_output.CreateAOVoltageChan(channel,"", min_value,max_value,daq.DAQmx_Val_Volts,None)    
-    
-    analog_output.WriteAnalogScalarF64(True,0,value,None)
-    
-    print "%s, %0.3f V" % (channel,value)
-    return value
+    analog_output = channelTasks[channel]    
+    try:
+        analog_output.WriteAnalogScalarF64(True,0,value,None)
+    except Exception as ex:
+        del channelTasks[channel]
+        raise ex
+
 
 @dispatcher.public
 def readAnalogInput(channel):
-    analog_input = daq.Task()
-    
-    analog_input.CreateAIVoltageChan(channel,"",daq.DAQmx_Val_RSE,-10.0,10.0,daq.DAQmx_Val_Volts,None)
-    
+    if not channelTasks.has_key(channel):
+        channelTasks[channel] = initializeAnalogInput(channel)
+        
+    analog_input = channelTasks[channel]    
+
     value = daq.float64()
-    analog_input.ReadAnalogScalarF64(10,daq.byref(value),None)
-    return value.value
+    try:
+        analog_input.ReadAnalogScalarF64(10,daq.byref(value),None)
+        return value.value
+    except Exception as ex:
+        del channelTasks[channel]
+        raise ex
+        
+
 
 @dispatcher.public
 def readDigitalInput(channel):
-    digital_input = daq.Task()
-    digital_input.CreateDIChan(channel,"",daq.DAQmx_Val_ChanPerLine)
+    if not channelTasks.has_key(channel):
+        channelTasks[channel] = initializeDigitalInput(channel)
+        
+    digital_input = channelTasks[channel]    
     
     value = daq.c_uint32
-    digital_input.ReadDigitalScalarU32(0,daq.byref(value),None)
-    return value.value
+    try:
+        digital_input.ReadDigitalScalarU32(0,daq.byref(value),None)
+        return value.value
+    except Exception as ex:
+        del channelTasks[channel]
+        raise ex
+    
+    
 
 rpc_server.serve_forever()
