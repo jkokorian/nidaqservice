@@ -1,10 +1,10 @@
 import PyDAQmx as daq
-import numpy
 import zmq
 from tinyrpc.protocols.jsonrpc import JSONRPCProtocol
 from tinyrpc.transports.zmq import ZmqServerTransport
 from tinyrpc.server import RPCServer
 from tinyrpc.dispatch import RPCDispatcher
+from os import system
 
 import argparse
 
@@ -16,6 +16,7 @@ parser.add_argument('--port', dest='port', type=int, default=5002,
                    
 args = parser.parse_args()
 
+
 ctx = zmq.Context()
 dispatcher = RPCDispatcher()
 
@@ -23,7 +24,7 @@ dispatcher = RPCDispatcher()
 endpoint = 'tcp://127.0.0.1:%i' % args.port
 transport = ZmqServerTransport.create(ctx, endpoint)
 print "serving requests at %s" % endpoint
-
+system("Title " + "NI DAQ Device Service")
 
 rpc_server = RPCServer(
     transport,
@@ -33,7 +34,7 @@ rpc_server = RPCServer(
 
 @dispatcher.public
 def writeDigitalOutput(channel,value):
-    digital_output = daq.Task()    
+    digital_output = daq.Task()
     digital_output.CreateDOChan(channel,"",daq.DAQmx_Val_ChanPerLine)
     digital_output.WriteDigitalScalarU32(True,0,value,None)
 
